@@ -594,7 +594,7 @@ int main()
 
     std::cout << "Comecando a carregar modelo..." << std::endl;
 
-    load_model(model, "models/beach_chair.glb");
+    load_model(model, "models/Buildingg-001.glb");
 
     std::cout << "Modelo carregado!" << std::endl;
 
