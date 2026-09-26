@@ -15,14 +15,14 @@
 #include <sstream>
 
 #include "font.h"
-#include "stb_image.h"
+#include "glb_model.h"
 
 const GLfloat kCameraSpeed = 0.1;
 const GLfloat kMouseSensitivity = 0.1;
 
 const GLfloat kDefaultCameraEyePositionX = 0;
 const GLfloat kDefaultCameraEyePositionY = 0;
-const GLfloat kDefaultCameraEyePositionZ = 0;
+const GLfloat kDefaultCameraEyePositionZ = -10;
 GLfloat camera_eye_x = kDefaultCameraEyePositionX;
 GLfloat camera_eye_y = kDefaultCameraEyePositionY;
 GLfloat camera_eye_z = kDefaultCameraEyePositionZ;
@@ -52,10 +52,10 @@ GLfloat camera_pitch = kDefaultCameraPitch;
 const GLfloat kPerspectiveFieldOfViewAngle = 45;
 const GLfloat kPerspectiveNearZ = 0.1;
 const GLfloat kPerspectiveFarZ = 100;
-const GLfloat kPerspectiveTranslateZ = 10;
+const GLfloat kPerspectiveTranslateZ = 13;
 
 bool translating = false;
-const GLfloat kTranslateLimit = 10;
+const GLfloat kTranslateLimit = 2;
 const GLfloat kDefaultTranslate = 0;
 GLfloat translate_increment = 0.1;
 GLfloat translate = kDefaultTranslate;
@@ -67,7 +67,7 @@ GLfloat rotate_angle_increment = 1;
 GLfloat rotate_angle = kDefaultRotateAngle;
 
 bool scaling = false;
-const GLfloat kScaleLimit = 10;
+const GLfloat kScaleLimit = 5;
 const GLfloat kDefaultScale = 1;
 GLfloat scale_increment = 0.1;
 GLfloat scale = kDefaultScale;
@@ -75,7 +75,8 @@ GLfloat scale = kDefaultScale;
 GLuint red_ball_texture_id;
 GLuint green_ball_texture_id;
 GLuint blue_ball_texture_id;
-GLuint brick_texture_id;
+
+GlbModel model;
 
 const GLfloat kHudHeight = 300;
 const GLfloat kHudWidth = 300;
@@ -119,6 +120,7 @@ static void mouse_read(GLFWwindow* window, double mouse_x, double mouse_y) {
   last_mouse_x = mouse_x;
   last_mouse_y = mouse_y;
 
+  camera_yaw += (mouse_delta_x * kMouseSensitivity);
   camera_pitch += (mouse_delta_y * kMouseSensitivity);
   if (camera_pitch > kCameraPitchLimit) {
     camera_pitch = kCameraPitchLimit;
@@ -126,7 +128,6 @@ static void mouse_read(GLFWwindow* window, double mouse_x, double mouse_y) {
   if (camera_pitch < -kCameraPitchLimit) {
     camera_pitch = -kCameraPitchLimit;
   }
-  camera_yaw += (mouse_delta_x * kMouseSensitivity);
 
   GLfloat camera_pitch_radians = camera_pitch * (3.1415 / 180);
   GLfloat camera_yaw_radians = camera_yaw * (3.1415 / 180);
@@ -269,37 +270,8 @@ void draw(GLFWwindow* window) {
     }
   }
 
-  glColor3ub(255, 255, 255);
   glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D, brick_texture_id);
-  glBegin(GL_TRIANGLES);
-  {
-    glVertex3f(-2, -2, -2);
-    glVertex3f(2, -2, -2);
-    glVertex3f(0, 2, -2);
-
-    glTexCoord2f(0, 0);
-    glVertex3f(-2, -2, -2);
-    glTexCoord2f(1, 0);
-    glVertex3f(2, -2, -2);
-    glTexCoord2f(0, 1);
-    glVertex3f(0, 0, 0);
-
-    glTexCoord2f(0, 0);
-    glVertex3f(2, -2, -2);
-    glTexCoord2f(1, 0);
-    glVertex3f(0, 2, -2);
-    glTexCoord2f(0.5, 1.0);
-    glVertex3f(0, 0, 0);
-
-    glTexCoord2f(0, 0);
-    glVertex3f(0, 2, -2);
-    glTexCoord2f(1, 0);
-    glVertex3f(-2, -2, -2);
-    glTexCoord2f(0.5, 1);
-    glVertex3f(0, 0, 0);
-  }
-  glEnd();
+  draw_model(model);
   glDisable(GL_TEXTURE_2D);
 }
 
@@ -396,7 +368,7 @@ int main() {
     return EXIT_FAILURE;
   }
   glfwSetWindowPos(window, 0, 0);
-  glfwSetWindowTitle(window, "Tetraedro com textura e camera");
+  glfwSetWindowTitle(window, "Modelo 3D com camera");
   glfwMakeContextCurrent(window);
 
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -407,12 +379,13 @@ int main() {
     return EXIT_FAILURE;
   }
 
+  load_model(model, "models/beach_chair.glb");
+
   glEnable(GL_DEPTH_TEST);
 
   load_texture(red_ball_texture_id, "textures/red_ball.png");
   load_texture(green_ball_texture_id, "textures/green_ball.png");
   load_texture(blue_ball_texture_id, "textures/blue_ball.png");
-  load_texture(brick_texture_id, "textures/terra.jpg");
 
   while (!glfwWindowShouldClose(window)) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -426,6 +399,7 @@ int main() {
     glfwPollEvents();
   }
 
+  destroy_model(model);
   glfwDestroyWindow(window);
   glfwTerminate();
   return EXIT_SUCCESS;
