@@ -88,6 +88,7 @@ GLuint green_ball_texture_id;
 GLuint blue_ball_texture_id;
 GLuint brick_texture_id;
 GlbModel model;
+GLuint model_display_list_id = 0;
 
 void load_texture(GLuint &texture_id, const std::string &filepath)
 {
@@ -529,32 +530,33 @@ void draw()
         camera_eye_x,
         camera_eye_y,
         camera_eye_z,
-
         camera_center_x,
         camera_center_y,
         camera_center_z,
-
         kCameraUpX,
         kCameraUpY,
         kCameraUpZ);
 
-    glTranslatef(
-        translate_x,
-        translate_y,
-        translate_z - kPerspectiveTranslateZ);
-
-    glRotatef(rotate_x, 1, 0, 0);
-    glRotatef(rotate_y, 0, 1, 0);
-    glRotatef(rotate_z, 0, 0, 1);
-
-    glScalef(
-        scale_x,
-        scale_y,
-        scale_z);
-
     glEnable(GL_TEXTURE_2D);
 
-    draw_model(model);
+    for (int i = 0; i < 10; i++)
+    {
+        glPushMatrix();
+
+        glTranslatef(i * 5.0f, 0.0f, translate_z - kPerspectiveTranslateZ);
+
+        glTranslatef(translate_x, translate_y, 0.0f);
+
+        glRotatef(rotate_x, 1, 0, 0);
+        glRotatef(rotate_y, 0, 1, 0);
+        glRotatef(rotate_z, 0, 0, 1);
+
+        glScalef(scale_x, scale_y, scale_z);
+
+        glCallList(model_display_list_id);
+
+        glPopMatrix();
+    }
 
     glDisable(GL_TEXTURE_2D);
 }
@@ -598,7 +600,14 @@ int main()
 
     std::cout << "Modelo carregado!" << std::endl;
 
+    model_display_list_id = glGenLists(1);
+
+    glNewList(model_display_list_id, GL_COMPILE);
+    draw_model(model);
+    glEndList();
+
     glEnable(GL_DEPTH_TEST);
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -624,6 +633,8 @@ int main()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    glDeleteLists(model_display_list_id, 1);
 
     destroy_model(model);
 
