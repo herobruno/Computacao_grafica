@@ -9,6 +9,7 @@
 #include <GL/glu.h>
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -58,16 +59,25 @@ const GLfloat kPerspectiveFarZ = 100.0f;
 const GLfloat kPerspectiveTranslateZ = 10.0f;
 
 GLuint water_texture_id = 0;
+
 GLuint boat_model_display_list_id = 0;
+GLuint port_model_display_list_id = 0;
 
 GlbModel boat_model;
+GlbModel port_model;
 
-const GLfloat kSkyColorDay[] = {0.53f, 0.81f, 0.92f, 1.0f};
+// Posição do porto em relação ao barco.
+const GLfloat kPortX = 4.0f;
+const GLfloat kPortY = 1.0f;
+const GLfloat kPortZ = 0.0f;
+const GLfloat kPortScale = 2.0f;
+const GLfloat kSkyColorDay[] = {
+    0.53f, 0.81f, 0.92f, 1.0f};
 
 void create_model_display_list(
-    GLuint& model_display_list_id,
-    const GlbModel& model
-) {
+    GLuint &model_display_list_id,
+    const GlbModel &model)
+{
     model_display_list_id = glGenLists(1);
 
     glNewList(model_display_list_id, GL_COMPILE);
@@ -75,21 +85,24 @@ void create_model_display_list(
     glEndList();
 }
 
-void load_water_texture(GLuint& texture_id, const std::string& filepath) {
+void load_water_texture(
+    GLuint &texture_id,
+    const std::string &filepath)
+{
     int texture_width = 0;
     int texture_height = 0;
     int texture_channels = 0;
 
     // Nao alterar globalmente a orientacao das imagens do stb_image.
-    stbi_uc* texture_data = stbi_load(
+    stbi_uc *texture_data = stbi_load(
         filepath.c_str(),
         &texture_width,
         &texture_height,
         &texture_channels,
-        0
-    );
+        0);
 
-    if (!texture_data) {
+    if (!texture_data)
+    {
         std::cerr << "Erro ao carregar a textura: "
                   << filepath << std::endl;
         std::cerr << stbi_failure_reason() << std::endl;
@@ -98,24 +111,25 @@ void load_water_texture(GLuint& texture_id, const std::string& filepath) {
 
     GLenum texture_format = GL_RGB;
 
-    switch (texture_channels) {
-        case 1:
-            texture_format = GL_RED;
-            break;
-        case 2:
-            texture_format = GL_RG;
-            break;
-        case 3:
-            texture_format = GL_RGB;
-            break;
-        case 4:
-            texture_format = GL_RGBA;
-            break;
-        default:
-            std::cerr << "Formato de textura nao suportado."
-                      << std::endl;
-            stbi_image_free(texture_data);
-            std::exit(EXIT_FAILURE);
+    switch (texture_channels)
+    {
+    case 1:
+        texture_format = GL_RED;
+        break;
+    case 2:
+        texture_format = GL_RG;
+        break;
+    case 3:
+        texture_format = GL_RGB;
+        break;
+    case 4:
+        texture_format = GL_RGBA;
+        break;
+    default:
+        std::cerr << "Formato de textura nao suportado."
+                  << std::endl;
+        stbi_image_free(texture_data);
+        std::exit(EXIT_FAILURE);
     }
 
     // Inverter apenas os pixels da textura da agua.
@@ -123,35 +137,35 @@ void load_water_texture(GLuint& texture_id, const std::string& filepath) {
     const int row_size = texture_width * bytes_per_pixel;
     std::vector<stbi_uc> row_buffer(row_size);
 
-    for (int y = 0; y < texture_height / 2; ++y) {
-        stbi_uc* top_row = texture_data + y * row_size;
-        stbi_uc* bottom_row =
+    for (int y = 0; y < texture_height / 2; ++y)
+    {
+        stbi_uc *top_row = texture_data + y * row_size;
+        stbi_uc *bottom_row =
             texture_data + (texture_height - 1 - y) * row_size;
 
         std::copy(
             top_row,
             top_row + row_size,
-            row_buffer.begin()
-        );
+            row_buffer.begin());
 
         std::copy(
             bottom_row,
             bottom_row + row_size,
-            top_row
-        );
+            top_row);
 
         std::copy(
             row_buffer.begin(),
             row_buffer.end(),
-            bottom_row
-        );
+            bottom_row);
     }
 
     GLint previous_binding = 0;
     GLint previous_unpack_alignment = 4;
 
     glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_binding);
-    glGetIntegerv(GL_UNPACK_ALIGNMENT, &previous_unpack_alignment);
+    glGetIntegerv(
+        GL_UNPACK_ALIGNMENT,
+        &previous_unpack_alignment);
 
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
@@ -167,36 +181,48 @@ void load_water_texture(GLuint& texture_id, const std::string& filepath) {
         0,
         texture_format,
         GL_UNSIGNED_BYTE,
-        texture_data
-    );
+        texture_data);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+
+    glTexParameteri(
+        GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
     glTexParameteri(
         GL_TEXTURE_2D,
         GL_TEXTURE_MIN_FILTER,
-        GL_LINEAR_MIPMAP_LINEAR
-    );
+        GL_LINEAR_MIPMAP_LINEAR);
+
     glTexParameteri(
         GL_TEXTURE_2D,
         GL_TEXTURE_MAG_FILTER,
-        GL_LINEAR
-    );
+        GL_LINEAR);
 
     glGenerateMipmap(GL_TEXTURE_2D);
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, previous_unpack_alignment);
+    glPixelStorei(
+        GL_UNPACK_ALIGNMENT,
+        previous_unpack_alignment);
+
     glBindTexture(GL_TEXTURE_2D, previous_binding);
 
     stbi_image_free(texture_data);
 }
 
-static void mouse_read(GLFWwindow* window, double mouse_x, double mouse_y) {
+static void mouse_read(
+    GLFWwindow *window,
+    double mouse_x,
+    double mouse_y)
+{
+    (void)window;
+
     static bool mouse_initialized = false;
     static double last_mouse_x = 0.0;
     static double last_mouse_y = 0.0;
 
-    if (!mouse_initialized) {
+    if (!mouse_initialized)
+    {
         last_mouse_x = mouse_x;
         last_mouse_y = mouse_y;
         mouse_initialized = true;
@@ -205,6 +231,7 @@ static void mouse_read(GLFWwindow* window, double mouse_x, double mouse_y) {
 
     GLfloat mouse_delta_x =
         static_cast<GLfloat>(mouse_x - last_mouse_x);
+
     GLfloat mouse_delta_y =
         static_cast<GLfloat>(last_mouse_y - mouse_y);
 
@@ -213,11 +240,13 @@ static void mouse_read(GLFWwindow* window, double mouse_x, double mouse_y) {
 
     camera_pitch += mouse_delta_y * kMouseSensitivity;
 
-    if (camera_pitch > kCameraPitchLimit) {
+    if (camera_pitch > kCameraPitchLimit)
+    {
         camera_pitch = kCameraPitchLimit;
     }
 
-    if (camera_pitch < -kCameraPitchLimit) {
+    if (camera_pitch < -kCameraPitchLimit)
+    {
         camera_pitch = -kCameraPitchLimit;
     }
 
@@ -229,16 +258,20 @@ static void mouse_read(GLFWwindow* window, double mouse_x, double mouse_y) {
 
     camera_direction_x =
         cosf(yaw_radians) * cosf(pitch_radians);
+
     camera_direction_y = sinf(pitch_radians);
+
     camera_direction_z =
         sinf(yaw_radians) * cosf(pitch_radians);
 
     camera_right_x =
         camera_direction_z * kCameraUpY -
         camera_direction_y * kCameraUpZ;
+
     camera_right_y =
         camera_direction_x * kCameraUpZ -
         camera_direction_z * kCameraUpX;
+
     camera_right_z =
         camera_direction_y * kCameraUpX -
         camera_direction_x * kCameraUpY;
@@ -246,46 +279,55 @@ static void mouse_read(GLFWwindow* window, double mouse_x, double mouse_y) {
     const GLfloat right_length = sqrtf(
         camera_right_x * camera_right_x +
         camera_right_y * camera_right_y +
-        camera_right_z * camera_right_z
-    );
+        camera_right_z * camera_right_z);
 
-    if (right_length > 0.0f) {
+    if (right_length > 0.0f)
+    {
         camera_right_x /= right_length;
         camera_right_y /= right_length;
         camera_right_z /= right_length;
     }
 }
 
-void keyboard_read(GLFWwindow* window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+void keyboard_read(GLFWwindow *window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
         glfwSetWindowShouldClose(window, true);
     }
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
         camera_eye_x += camera_direction_x * kCameraSpeed;
         camera_eye_y += camera_direction_y * kCameraSpeed;
         camera_eye_z += camera_direction_z * kCameraSpeed;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
         camera_eye_x -= camera_direction_x * kCameraSpeed;
         camera_eye_y -= camera_direction_y * kCameraSpeed;
         camera_eye_z -= camera_direction_z * kCameraSpeed;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera_eye_x -= camera_right_x * kCameraSpeed;
-        camera_eye_y -= camera_right_y * kCameraSpeed;
-        camera_eye_z -= camera_right_z * kCameraSpeed;
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+    // A: mover para a esquerda.
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
         camera_eye_x += camera_right_x * kCameraSpeed;
         camera_eye_y += camera_right_y * kCameraSpeed;
         camera_eye_z += camera_right_z * kCameraSpeed;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+    // D: mover para a direita.
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        camera_eye_x -= camera_right_x * kCameraSpeed;
+        camera_eye_y -= camera_right_y * kCameraSpeed;
+        camera_eye_z -= camera_right_z * kCameraSpeed;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    {
         camera_eye_x = kDefaultCameraEyePositionX;
         camera_eye_y = kDefaultCameraEyePositionY;
         camera_eye_z = kDefaultCameraEyePositionZ;
@@ -303,24 +345,34 @@ void keyboard_read(GLFWwindow* window) {
     }
 }
 
-void resize_window(GLFWwindow* window) {
+void resize_window(GLFWwindow *window)
+{
     int window_width = 0;
     int window_height = 0;
 
-    glfwGetFramebufferSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(
+        window,
+        &window_width,
+        &window_height);
 
-    if (window_width > 0 && window_height > 0) {
+    if (window_width > 0 && window_height > 0)
+    {
         glViewport(0, 0, window_width, window_height);
     }
 }
 
-void draw(GLFWwindow* window) {
+void draw(GLFWwindow *window)
+{
     int window_width = 0;
     int window_height = 0;
 
-    glfwGetFramebufferSize(window, &window_width, &window_height);
+    glfwGetFramebufferSize(
+        window,
+        &window_width,
+        &window_height);
 
-    if (window_width <= 0 || window_height <= 0) {
+    if (window_width <= 0 || window_height <= 0)
+    {
         return;
     }
 
@@ -335,8 +387,7 @@ void draw(GLFWwindow* window) {
         kPerspectiveFieldOfViewAngle,
         aspect_ratio,
         kPerspectiveNearZ,
-        kPerspectiveFarZ
-    );
+        kPerspectiveFarZ);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -350,18 +401,19 @@ void draw(GLFWwindow* window) {
         camera_eye_z + camera_direction_z,
         kCameraUpX,
         kCameraUpY,
-        kCameraUpZ
-    );
+        kCameraUpZ);
 
-    glTranslatef(0.0f, 0.0f, -kPerspectiveTranslateZ);
+    glTranslatef(
+        0.0f,
+        0.0f,
+        -kPerspectiveTranslateZ);
 
-    // Agua: estado grafico isolado do modelo.
+    // Agua.
     glPushAttrib(
         GL_ENABLE_BIT |
         GL_TEXTURE_BIT |
         GL_CURRENT_BIT |
-        GL_PIXEL_MODE_BIT
-    );
+        GL_PIXEL_MODE_BIT);
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -370,54 +422,106 @@ void draw(GLFWwindow* window) {
 
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, water_texture_id);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+    glTexEnvi(
+        GL_TEXTURE_ENV,
+        GL_TEXTURE_ENV_MODE,
+        GL_MODULATE);
+
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
     glBegin(GL_QUADS);
-        glTexCoord2f(0.0f, 0.0f);
-        glVertex3f(-50.0f, 0.0f, -50.0f);
 
-        glTexCoord2f(3.0f, 0.0f);
-        glVertex3f(50.0f, 0.0f, -50.0f);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(-50.0f, 0.0f, -50.0f);
 
-        glTexCoord2f(3.0f, 3.0f);
-        glVertex3f(50.0f, 0.0f, 50.0f);
+    glTexCoord2f(3.0f, 0.0f);
+    glVertex3f(50.0f, 0.0f, -50.0f);
 
-        glTexCoord2f(0.0f, 3.0f);
-        glVertex3f(-50.0f, 0.0f, 50.0f);
+    glTexCoord2f(3.0f, 3.0f);
+    glVertex3f(50.0f, 0.0f, 50.0f);
+
+    glTexCoord2f(0.0f, 3.0f);
+    glVertex3f(-50.0f, 0.0f, 50.0f);
+
     glEnd();
 
     glPopAttrib();
 
-    // Barco: usa exclusivamente as texturas carregadas pelo glb_model.h.
-    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_CURRENT_BIT);
+    // Barco: dobro do tamanho original.
+    glPushAttrib(
+        GL_ENABLE_BIT |
+        GL_TEXTURE_BIT |
+        GL_CURRENT_BIT);
 
     glEnable(GL_DEPTH_TEST);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
-   glPushMatrix();
-    glTranslatef(0.0f, 1.0f, 0.0f);
+    glPushMatrix();
+
+    // Eleva o barco para compensar o aumento de tamanho.
+    glTranslatef(0.0f, 2.0f, 0.0f);
+
     glRotatef(-30.0f, 0.0f, 1.0f, 0.0f);
     glRotatef(-3.0f, 0.0f, 0.0f, 1.0f);
 
+    glScalef(2.0f, 2.0f, 2.0f);
+
     glCallList(boat_model_display_list_id);
-glPopMatrix();
+
+    glPopMatrix();
+
+    glPopAttrib();
+
+    // Porto: perto do barco.
+    glPushAttrib(
+        GL_ENABLE_BIT |
+        GL_TEXTURE_BIT |
+        GL_CURRENT_BIT);
+
+    glEnable(GL_DEPTH_TEST);
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    glPushMatrix();
+
+    glTranslatef(kPortX, kPortY, kPortZ);
+
+    glScalef(
+        kPortScale,
+        kPortScale,
+        kPortScale);
+
+    glCallList(port_model_display_list_id);
+
+    glPopMatrix();
 
     glPopAttrib();
 }
 
-int main() {
-    if (!glfwInit()) {
-        std::cerr << "Falha ao inicializar GLFW" << std::endl;
+int main()
+{
+    if (!glfwInit())
+    {
+        std::cerr
+            << "Falha ao inicializar GLFW"
+            << std::endl;
+
         return EXIT_FAILURE;
     }
 
-    GLFWwindow* window = glfwCreateWindow(
-        800, 800, "Cena 3D", nullptr, nullptr
-    );
+    GLFWwindow *window = glfwCreateWindow(
+        800,
+        800,
+        "Cena 3D",
+        nullptr,
+        nullptr);
 
-    if (!window) {
-        std::cerr << "Falha ao criar a janela GLFW" << std::endl;
+    if (!window)
+    {
+        std::cerr
+            << "Falha ao criar a janela GLFW"
+            << std::endl;
+
         glfwTerminate();
         return EXIT_FAILURE;
     }
@@ -425,46 +529,89 @@ int main() {
     glfwSetWindowPos(window, 0, 0);
     glfwMakeContextCurrent(window);
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(
+        window,
+        GLFW_CURSOR,
+        GLFW_CURSOR_DISABLED);
+
     glfwSetCursorPosCallback(window, mouse_read);
 
     glewExperimental = GL_TRUE;
 
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Falha ao inicializar GLEW" << std::endl;
+    if (glewInit() != GLEW_OK)
+    {
+        std::cerr
+            << "Falha ao inicializar GLEW"
+            << std::endl;
+
         glfwDestroyWindow(window);
         glfwTerminate();
+
         return EXIT_FAILURE;
     }
 
     glGetError();
 
-    load_water_texture(water_texture_id, "textures/water.jpg");
+    load_water_texture(
+        water_texture_id,
+        "textures/water.jpg");
 
-    if (!load_model(boat_model, "models/barco.glb")) {
+    // Carrega o barco.
+    if (!load_model(boat_model, "models/barco.glb"))
+    {
+        std::cerr
+            << "Erro ao carregar models/barco.glb"
+            << std::endl;
+
         glDeleteTextures(1, &water_texture_id);
+
         glfwDestroyWindow(window);
         glfwTerminate();
+
         return EXIT_FAILURE;
     }
 
     create_model_display_list(
         boat_model_display_list_id,
-        boat_model
-    );
+        boat_model);
+
+    // Carrega o porto.
+    if (!load_model(port_model, "models/porto.glb"))
+    {
+        std::cerr
+            << "Erro ao carregar models/porto.glb"
+            << std::endl;
+
+        glDeleteLists(boat_model_display_list_id, 1);
+
+        destroy_model(boat_model);
+
+        glDeleteTextures(1, &water_texture_id);
+
+        glfwDestroyWindow(window);
+        glfwTerminate();
+
+        return EXIT_FAILURE;
+    }
+
+    create_model_display_list(
+        port_model_display_list_id,
+        port_model);
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    while (!glfwWindowShouldClose(window)) {
+    while (!glfwWindowShouldClose(window))
+    {
         glClearColor(
             kSkyColorDay[0],
             kSkyColorDay[1],
             kSkyColorDay[2],
-            kSkyColorDay[3]
-        );
+            kSkyColorDay[3]);
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClear(
+            GL_COLOR_BUFFER_BIT |
+            GL_DEPTH_BUFFER_BIT);
 
         keyboard_read(window);
         resize_window(window);
@@ -474,10 +621,14 @@ int main() {
         glfwPollEvents();
     }
 
+    // Libera os recursos.
     glDeleteLists(boat_model_display_list_id, 1);
+    glDeleteLists(port_model_display_list_id, 1);
+
     glDeleteTextures(1, &water_texture_id);
 
     destroy_model(boat_model);
+    destroy_model(port_model);
 
     glfwDestroyWindow(window);
     glfwTerminate();
