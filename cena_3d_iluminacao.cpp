@@ -69,18 +69,37 @@ GlbModel port_model;
 GlbModel moon_model;
 
 // Posicao e escala da lua no ceu.
-const GLfloat kMoonX = -6.0f;
-const GLfloat kMoonY = 8.0f;
-const GLfloat kMoonZ = -18.0f;
+const GLfloat kMoonAmbient[] = {0.38f, 0.40f, 0.52f, 1.0f};
+const GLfloat kMoonDiffuse[] = {1.25f, 1.25f, 1.45f, 1.0f};
+const GLfloat kMoonSpecular[] = {1.20f, 1.20f, 1.35f, 1.0f};
+const GLfloat kMoonEmission[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+const GLfloat kMoonConstantAttenuation = 0.25f;
+const GLfloat kMoonLinearAttenuation = 0.008f;
+const GLfloat kMoonQuadraticAttenuation = 0.0f;
+
+// Escala e posicao adequadas para o modelo moon_small.glb.
 const GLfloat kMoonScale = 1.5f;
+const GLfloat kMoonTranslateIncrement = 0.4f;
+const GLfloat kDefaultMoonPositionX = -6.0f;
+const GLfloat kDefaultMoonPositionY = 8.0f;
+const GLfloat kDefaultMoonPositionZ = -18.0f;
+const GLfloat kMinimumMoonPositionY = 1.0f;
+GLfloat moon_position[] = {
+    kDefaultMoonPositionX,
+    kDefaultMoonPositionY,
+    kDefaultMoonPositionZ,
+    1.0f
+};
 
 // Posição do porto em relação ao barco.
 const GLfloat kPortX = 4.0f;
 const GLfloat kPortY = 1.0f;
 const GLfloat kPortZ = 0.0f;
 const GLfloat kPortScale = 2.0f;
-const GLfloat kSkyColorDay[] = {
-    0.53f, 0.81f, 0.92f, 1.0f};
+// Ceu noturno azul-escuro.
+const GLfloat kSkyColorNight[] = {
+    0.015f, 0.025f, 0.09f, 1.0f};
 
 void create_model_display_list(
     GLuint &model_display_list_id,
@@ -350,6 +369,35 @@ void keyboard_read(GLFWwindow *window)
         camera_right_x = 1.0f;
         camera_right_y = 0.0f;
         camera_right_z = 0.0f;
+
+        moon_position[0] = kDefaultMoonPositionX;
+        moon_position[1] = kDefaultMoonPositionY;
+        moon_position[2] = kDefaultMoonPositionZ;
+    }
+
+    // Segure L e use as setas/Page Up/Page Down para mover a lua.
+    if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+    {
+        if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+            moon_position[0] -= kMoonTranslateIncrement;
+
+        if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+            moon_position[0] += kMoonTranslateIncrement;
+
+        if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        {
+            if (moon_position[1] > kMinimumMoonPositionY)
+                moon_position[1] -= kMoonTranslateIncrement;
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+            moon_position[1] += kMoonTranslateIncrement;
+
+        if (glfwGetKey(window, GLFW_KEY_PAGE_DOWN) == GLFW_PRESS)
+            moon_position[2] -= kMoonTranslateIncrement;
+
+        if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
+            moon_position[2] += kMoonTranslateIncrement;
     }
 }
 
@@ -416,6 +464,9 @@ void draw(GLFWwindow *window)
         0.0f,
         -kPerspectiveTranslateZ);
 
+    // A luz pontual acompanha a Lua no mesmo sistema de coordenadas da cena.
+    glLightfv(GL_LIGHT0, GL_POSITION, moon_position);
+
     // Agua.
     glPushAttrib(
         GL_ENABLE_BIT |
@@ -438,6 +489,8 @@ void draw(GLFWwindow *window)
 
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
+    // Normal apontada para cima: permite que a luz ilumine a superficie da agua.
+    glNormal3f(0.0f, 1.0f, 0.0f);
     glBegin(GL_QUADS);
 
     glTexCoord2f(0.0f, 0.0f);
@@ -509,13 +562,18 @@ void draw(GLFWwindow *window)
     glPushAttrib(
         GL_ENABLE_BIT |
         GL_TEXTURE_BIT |
-        GL_CURRENT_BIT);
+        GL_CURRENT_BIT |
+        GL_LIGHTING_BIT);
 
     glEnable(GL_DEPTH_TEST);
     glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 
     glPushMatrix();
-    glTranslatef(kMoonX, kMoonY, kMoonZ);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, kMoonEmission);
+    glTranslatef(
+        moon_position[0],
+        moon_position[1],
+        moon_position[2]);
     glScalef(kMoonScale, kMoonScale, kMoonScale);
     glCallList(moon_model_display_list_id);
     glPopMatrix();
@@ -651,13 +709,33 @@ int main()
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
+    // Iluminacao da lua com as mesmas propriedades do codigo de referencia.
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+
+    // Luz ambiente baixa para manter a cena noturna sem clarear tudo.
+    const GLfloat kNightAmbient[] = {0.16f, 0.18f, 0.28f, 1.0f};
+    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, kNightAmbient);
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, kMoonAmbient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, kMoonDiffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, kMoonSpecular);
+    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, kMoonConstantAttenuation);
+    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, kMoonLinearAttenuation);
+    glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, kMoonQuadraticAttenuation);
+    glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
+
+    glEnable(GL_NORMALIZE);
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
     while (!glfwWindowShouldClose(window))
     {
         glClearColor(
-            kSkyColorDay[0],
-            kSkyColorDay[1],
-            kSkyColorDay[2],
-            kSkyColorDay[3]);
+            kSkyColorNight[0],
+            kSkyColorNight[1],
+            kSkyColorNight[2],
+            kSkyColorNight[3]);
 
         glClear(
             GL_COLOR_BUFFER_BIT |
