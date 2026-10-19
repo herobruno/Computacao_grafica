@@ -19,7 +19,6 @@
 
 #include "glb_model.h"
 
-
 const GLfloat kCameraSpeed = 0.1f;
 const GLfloat kMouseSensitivity = 0.1f;
 
@@ -59,8 +58,6 @@ const GLfloat kPerspectiveNearZ = 0.1f;
 const GLfloat kPerspectiveFarZ = 100.0f;
 const GLfloat kPerspectiveTranslateZ = 10.0f;
 
-
-
 GLuint water_texture_id = 0;
 
 GLuint boat_model_display_list_id = 0;
@@ -71,23 +68,17 @@ GlbModel boat_model;
 GlbModel port_model;
 GlbModel moon_model;
 
-
-
 const GLfloat kMoonAmbient[] = {
-    0.38f, 0.40f, 0.52f, 1.0f
-};
+    0.38f, 0.40f, 0.52f, 1.0f};
 
 const GLfloat kMoonDiffuse[] = {
-    1.25f, 1.25f, 1.45f, 1.0f
-};
+    1.25f, 1.25f, 1.45f, 1.0f};
 
 const GLfloat kMoonSpecular[] = {
-    1.20f, 1.20f, 1.35f, 1.0f
-};
+    1.20f, 1.20f, 1.35f, 1.0f};
 
 const GLfloat kMoonEmission[] = {
-    1.0f, 1.0f, 1.0f, 1.0f
-};
+    1.0f, 1.0f, 1.0f, 1.0f};
 
 const GLfloat kMoonConstantAttenuation = 0.25f;
 const GLfloat kMoonLinearAttenuation = 0.008f;
@@ -96,7 +87,6 @@ const GLfloat kMoonQuadraticAttenuation = 0.0f;
 // ============================================================
 // MOVIMENTO AUTOMATICO DA LUA
 // ============================================================
-
 
 const GLfloat kMoonOrbitRadiusX = 10.0f;
 const GLfloat kMoonOrbitRadiusZ = 10.0f;
@@ -121,8 +111,7 @@ GLfloat moon_position[] = {
     kMoonOrbitCenterX + kMoonOrbitRadiusX,
     kMoonOrbitHeight,
     kMoonOrbitCenterZ,
-    1.0f
-};
+    1.0f};
 
 const GLfloat kMoonTranslateIncrement = 0.4f;
 const GLfloat kDefaultMoonPositionX = -6.0f;
@@ -140,12 +129,7 @@ const GLfloat kPortZ = 0.0f;
 const GLfloat kPortScale = 2.0f;
 
 const GLfloat kSkyColorNight[] = {
-    0.015f, 0.025f, 0.09f, 1.0f
-};
-
-// ============================================================
-// LISTAS DE DESENHO DOS MODELOS
-// ============================================================
+    0.015f, 0.025f, 0.09f, 1.0f};
 
 void create_model_display_list(
     GLuint &model_display_list_id,
@@ -157,10 +141,6 @@ void create_model_display_list(
     draw_model(model);
     glEndList();
 }
-
-// ============================================================
-// CARREGAMENTO DA TEXTURA DA AGUA
-// ============================================================
 
 void load_water_texture(
     GLuint &texture_id,
@@ -306,10 +286,6 @@ void load_water_texture(
     stbi_image_free(texture_data);
 }
 
-// ============================================================
-// CONTROLE DA CAMERA PELO MOUSE
-// ============================================================
-
 static void mouse_read(
     GLFWwindow *window,
     double mouse_x,
@@ -394,10 +370,6 @@ static void mouse_read(
     }
 }
 
-// ============================================================
-// CONTROLES DO TECLADO
-// ============================================================
-
 void keyboard_read(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -454,7 +426,6 @@ void keyboard_read(GLFWwindow *window)
         camera_right_x = 1.0f;
         camera_right_y = 0.0f;
         camera_right_z = 0.0f;
-
     }
 
     /*
@@ -494,10 +465,6 @@ void keyboard_read(GLFWwindow *window)
     */
 }
 
-// ============================================================
-// REDIMENSIONAMENTO DA JANELA
-// ============================================================
-
 void resize_window(GLFWwindow *window)
 {
     int window_width = 0;
@@ -518,10 +485,6 @@ void resize_window(GLFWwindow *window)
     }
 }
 
-// ============================================================
-// DESENHO DA CENA
-// ============================================================
-
 void draw(GLFWwindow *window)
 {
     int window_width = 0;
@@ -540,7 +503,6 @@ void draw(GLFWwindow *window)
     const GLdouble aspect_ratio =
         static_cast<GLdouble>(window_width) /
         static_cast<GLdouble>(window_height);
-
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -678,7 +640,6 @@ void draw(GLFWwindow *window)
 
     glPushMatrix();
 
-    // Eleva o barco para compensar o aumento de tamanho.
     glTranslatef(
         0.0f,
         2.0f,
@@ -787,10 +748,6 @@ void draw(GLFWwindow *window)
     glPopAttrib();
 }
 
-// ============================================================
-// MAIN
-// ============================================================
-
 int main()
 {
     if (!glfwInit())
@@ -852,17 +809,9 @@ int main()
 
     glGetError();
 
-    // --------------------------------------------------------
-    // CARREGAR TEXTURA DA AGUA
-    // --------------------------------------------------------
-
     load_water_texture(
         water_texture_id,
         "textures/water.jpg");
-
-    // --------------------------------------------------------
-    // CARREGAR BARCO
-    // --------------------------------------------------------
 
     if (!load_model(
             boat_model,
@@ -885,10 +834,6 @@ int main()
     create_model_display_list(
         boat_model_display_list_id,
         boat_model);
-
-    // --------------------------------------------------------
-    // CARREGAR PORTO
-    // --------------------------------------------------------
 
     if (!load_model(
             port_model,
@@ -917,10 +862,6 @@ int main()
     create_model_display_list(
         port_model_display_list_id,
         port_model);
-
-    // --------------------------------------------------------
-    // CARREGAR LUA
-    // --------------------------------------------------------
 
     if (!load_model(
             moon_model,
@@ -955,10 +896,6 @@ int main()
         moon_model_display_list_id,
         moon_model);
 
-    // --------------------------------------------------------
-    // CONFIGURACAO DA ILUMINACAO
-    // --------------------------------------------------------
-
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
@@ -968,8 +905,7 @@ int main()
 
     // Iluminacao ambiente global da cena noturna.
     const GLfloat kNightAmbient[] = {
-        0.16f, 0.18f, 0.28f, 1.0f
-    };
+        0.16f, 0.18f, 0.28f, 1.0f};
 
     glLightModelfv(
         GL_LIGHT_MODEL_AMBIENT,
@@ -1021,10 +957,6 @@ int main()
         GL_FRONT_AND_BACK,
         GL_AMBIENT_AND_DIFFUSE);
 
-    // --------------------------------------------------------
-    // LOOP PRINCIPAL
-    // --------------------------------------------------------
-
     while (!glfwWindowShouldClose(window))
     {
         glClearColor(
@@ -1048,10 +980,6 @@ int main()
 
         glfwPollEvents();
     }
-
-    // --------------------------------------------------------
-    // LIBERAR RECURSOS
-    // --------------------------------------------------------
 
     glDeleteLists(
         boat_model_display_list_id,
