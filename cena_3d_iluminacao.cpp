@@ -19,6 +19,7 @@
 
 #include "glb_model.h"
 
+
 const GLfloat kCameraSpeed = 0.1f;
 const GLfloat kMouseSensitivity = 0.1f;
 
@@ -58,6 +59,8 @@ const GLfloat kPerspectiveNearZ = 0.1f;
 const GLfloat kPerspectiveFarZ = 100.0f;
 const GLfloat kPerspectiveTranslateZ = 10.0f;
 
+
+
 GLuint water_texture_id = 0;
 
 GLuint boat_model_display_list_id = 0;
@@ -68,38 +71,81 @@ GlbModel boat_model;
 GlbModel port_model;
 GlbModel moon_model;
 
-// Posicao e escala da lua no ceu.
-const GLfloat kMoonAmbient[] = {0.38f, 0.40f, 0.52f, 1.0f};
-const GLfloat kMoonDiffuse[] = {1.25f, 1.25f, 1.45f, 1.0f};
-const GLfloat kMoonSpecular[] = {1.20f, 1.20f, 1.35f, 1.0f};
-const GLfloat kMoonEmission[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+
+const GLfloat kMoonAmbient[] = {
+    0.38f, 0.40f, 0.52f, 1.0f
+};
+
+const GLfloat kMoonDiffuse[] = {
+    1.25f, 1.25f, 1.45f, 1.0f
+};
+
+const GLfloat kMoonSpecular[] = {
+    1.20f, 1.20f, 1.35f, 1.0f
+};
+
+const GLfloat kMoonEmission[] = {
+    1.0f, 1.0f, 1.0f, 1.0f
+};
 
 const GLfloat kMoonConstantAttenuation = 0.25f;
 const GLfloat kMoonLinearAttenuation = 0.008f;
 const GLfloat kMoonQuadraticAttenuation = 0.0f;
 
-// Escala e posicao adequadas para o modelo moon_small.glb.
+// ============================================================
+// MOVIMENTO AUTOMATICO DA LUA
+// ============================================================
+
+
+const GLfloat kMoonOrbitRadiusX = 10.0f;
+const GLfloat kMoonOrbitRadiusZ = 10.0f;
+
+const GLfloat kMoonOrbitCenterX = 0.0f;
+const GLfloat kMoonOrbitCenterZ = 0.0f;
+
+const GLfloat kMoonOrbitHeight = 8.0f;
+
+const GLfloat kMoonOrbitSpeed = 0.3f;
+
+GLfloat moon_orbit_angle = 0.0f;
+
 const GLfloat kMoonScale = 1.5f;
+
+// ============================================================
+// POSICAO DA LUA
+// ============================================================
+
+// A posicao e atualizada automaticamente em draw().
+GLfloat moon_position[] = {
+    kMoonOrbitCenterX + kMoonOrbitRadiusX,
+    kMoonOrbitHeight,
+    kMoonOrbitCenterZ,
+    1.0f
+};
+
 const GLfloat kMoonTranslateIncrement = 0.4f;
 const GLfloat kDefaultMoonPositionX = -6.0f;
 const GLfloat kDefaultMoonPositionY = 8.0f;
 const GLfloat kDefaultMoonPositionZ = -18.0f;
 const GLfloat kMinimumMoonPositionY = 1.0f;
-GLfloat moon_position[] = {
-    kDefaultMoonPositionX,
-    kDefaultMoonPositionY,
-    kDefaultMoonPositionZ,
-    1.0f
-};
 
-// Posição do porto em relação ao barco.
+// ============================================================
+// PORTO E CEU
+// ============================================================
+
 const GLfloat kPortX = 4.0f;
 const GLfloat kPortY = 1.0f;
 const GLfloat kPortZ = 0.0f;
 const GLfloat kPortScale = 2.0f;
-// Ceu noturno azul-escuro.
+
 const GLfloat kSkyColorNight[] = {
-    0.015f, 0.025f, 0.09f, 1.0f};
+    0.015f, 0.025f, 0.09f, 1.0f
+};
+
+// ============================================================
+// LISTAS DE DESENHO DOS MODELOS
+// ============================================================
 
 void create_model_display_list(
     GLuint &model_display_list_id,
@@ -112,6 +158,10 @@ void create_model_display_list(
     glEndList();
 }
 
+// ============================================================
+// CARREGAMENTO DA TEXTURA DA AGUA
+// ============================================================
+
 void load_water_texture(
     GLuint &texture_id,
     const std::string &filepath)
@@ -120,7 +170,6 @@ void load_water_texture(
     int texture_height = 0;
     int texture_channels = 0;
 
-    // Nao alterar globalmente a orientacao das imagens do stb_image.
     stbi_uc *texture_data = stbi_load(
         filepath.c_str(),
         &texture_width,
@@ -132,7 +181,9 @@ void load_water_texture(
     {
         std::cerr << "Erro ao carregar a textura: "
                   << filepath << std::endl;
+
         std::cerr << stbi_failure_reason() << std::endl;
+
         std::exit(EXIT_FAILURE);
     }
 
@@ -143,32 +194,40 @@ void load_water_texture(
     case 1:
         texture_format = GL_RED;
         break;
+
     case 2:
         texture_format = GL_RG;
         break;
+
     case 3:
         texture_format = GL_RGB;
         break;
+
     case 4:
         texture_format = GL_RGBA;
         break;
+
     default:
         std::cerr << "Formato de textura nao suportado."
                   << std::endl;
+
         stbi_image_free(texture_data);
         std::exit(EXIT_FAILURE);
     }
 
-    // Inverter apenas os pixels da textura da agua.
     const int bytes_per_pixel = texture_channels;
     const int row_size = texture_width * bytes_per_pixel;
+
     std::vector<stbi_uc> row_buffer(row_size);
 
     for (int y = 0; y < texture_height / 2; ++y)
     {
-        stbi_uc *top_row = texture_data + y * row_size;
+        stbi_uc *top_row =
+            texture_data + y * row_size;
+
         stbi_uc *bottom_row =
-            texture_data + (texture_height - 1 - y) * row_size;
+            texture_data +
+            (texture_height - 1 - y) * row_size;
 
         std::copy(
             top_row,
@@ -189,12 +248,16 @@ void load_water_texture(
     GLint previous_binding = 0;
     GLint previous_unpack_alignment = 4;
 
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &previous_binding);
+    glGetIntegerv(
+        GL_TEXTURE_BINDING_2D,
+        &previous_binding);
+
     glGetIntegerv(
         GL_UNPACK_ALIGNMENT,
         &previous_unpack_alignment);
 
     glGenTextures(1, &texture_id);
+
     glBindTexture(GL_TEXTURE_2D, texture_id);
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -211,10 +274,14 @@ void load_water_texture(
         texture_data);
 
     glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_S,
+        GL_REPEAT);
 
     glTexParameteri(
-        GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        GL_TEXTURE_2D,
+        GL_TEXTURE_WRAP_T,
+        GL_REPEAT);
 
     glTexParameteri(
         GL_TEXTURE_2D,
@@ -232,10 +299,16 @@ void load_water_texture(
         GL_UNPACK_ALIGNMENT,
         previous_unpack_alignment);
 
-    glBindTexture(GL_TEXTURE_2D, previous_binding);
+    glBindTexture(
+        GL_TEXTURE_2D,
+        previous_binding);
 
     stbi_image_free(texture_data);
 }
+
+// ============================================================
+// CONTROLE DA CAMERA PELO MOUSE
+// ============================================================
 
 static void mouse_read(
     GLFWwindow *window,
@@ -280,13 +353,18 @@ static void mouse_read(
     camera_yaw += mouse_delta_x * kMouseSensitivity;
 
     const GLfloat radians = 3.14159265f / 180.0f;
-    const GLfloat pitch_radians = camera_pitch * radians;
-    const GLfloat yaw_radians = camera_yaw * radians;
+
+    const GLfloat pitch_radians =
+        camera_pitch * radians;
+
+    const GLfloat yaw_radians =
+        camera_yaw * radians;
 
     camera_direction_x =
         cosf(yaw_radians) * cosf(pitch_radians);
 
-    camera_direction_y = sinf(pitch_radians);
+    camera_direction_y =
+        sinf(pitch_radians);
 
     camera_direction_z =
         sinf(yaw_radians) * cosf(pitch_radians);
@@ -316,6 +394,10 @@ static void mouse_read(
     }
 }
 
+// ============================================================
+// CONTROLES DO TECLADO
+// ============================================================
+
 void keyboard_read(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -323,6 +405,7 @@ void keyboard_read(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
     }
 
+    // W: mover a camera para frente.
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
         camera_eye_x += camera_direction_x * kCameraSpeed;
@@ -330,6 +413,7 @@ void keyboard_read(GLFWwindow *window)
         camera_eye_z += camera_direction_z * kCameraSpeed;
     }
 
+    // S: mover a camera para tras.
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
         camera_eye_x -= camera_direction_x * kCameraSpeed;
@@ -353,6 +437,7 @@ void keyboard_read(GLFWwindow *window)
         camera_eye_z -= camera_right_z * kCameraSpeed;
     }
 
+    // Espaco: restaurar a posicao da camera.
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
     {
         camera_eye_x = kDefaultCameraEyePositionX;
@@ -370,12 +455,17 @@ void keyboard_read(GLFWwindow *window)
         camera_right_y = 0.0f;
         camera_right_z = 0.0f;
 
-        moon_position[0] = kDefaultMoonPositionX;
-        moon_position[1] = kDefaultMoonPositionY;
-        moon_position[2] = kDefaultMoonPositionZ;
     }
 
-    // Segure L e use as setas/Page Up/Page Down para mover a lua.
+    /*
+    ============================================================
+    CONTROLE MANUAL DA LUA - TEMPORARIAMENTE DESATIVADO
+    ============================================================
+
+    Para reativar o controle manual, remova os marcadores
+    de comentario deste bloco.
+
+    // Segure L e use as setas/Page Up/Page Down para mover a Lua.
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
     {
         if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
@@ -399,7 +489,14 @@ void keyboard_read(GLFWwindow *window)
         if (glfwGetKey(window, GLFW_KEY_PAGE_UP) == GLFW_PRESS)
             moon_position[2] += kMoonTranslateIncrement;
     }
+
+    ============================================================
+    */
 }
+
+// ============================================================
+// REDIMENSIONAMENTO DA JANELA
+// ============================================================
 
 void resize_window(GLFWwindow *window)
 {
@@ -413,9 +510,17 @@ void resize_window(GLFWwindow *window)
 
     if (window_width > 0 && window_height > 0)
     {
-        glViewport(0, 0, window_width, window_height);
+        glViewport(
+            0,
+            0,
+            window_width,
+            window_height);
     }
 }
+
+// ============================================================
+// DESENHO DA CENA
+// ============================================================
 
 void draw(GLFWwindow *window)
 {
@@ -435,6 +540,7 @@ void draw(GLFWwindow *window)
     const GLdouble aspect_ratio =
         static_cast<GLdouble>(window_width) /
         static_cast<GLdouble>(window_height);
+
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -464,10 +570,42 @@ void draw(GLFWwindow *window)
         0.0f,
         -kPerspectiveTranslateZ);
 
-    // A luz pontual acompanha a Lua no mesmo sistema de coordenadas da cena.
-    glLightfv(GL_LIGHT0, GL_POSITION, moon_position);
+    // --------------------------------------------------------
+    // ATUALIZACAO AUTOMATICA DA ORBITA DA LUA
+    // --------------------------------------------------------
 
-    // Agua.
+    // Usa o tempo decorrido desde a inicializacao do GLFW.
+    const GLfloat elapsed_time =
+        static_cast<GLfloat>(glfwGetTime());
+
+    // Calcula o angulo atual da orbita.
+    moon_orbit_angle =
+        kMoonOrbitSpeed * elapsed_time;
+
+    // Calcula a posicao da Lua em uma orbita circular.
+    moon_position[0] =
+        kMoonOrbitCenterX +
+        kMoonOrbitRadiusX * cosf(moon_orbit_angle);
+
+    moon_position[1] = kMoonOrbitHeight;
+
+    moon_position[2] =
+        kMoonOrbitCenterZ +
+        kMoonOrbitRadiusZ * sinf(moon_orbit_angle);
+
+    moon_position[3] = 1.0f;
+
+    // A luz acompanha a posicao atual da Lua.
+    // Esta chamada ocorre depois da configuracao da camera.
+    glLightfv(
+        GL_LIGHT0,
+        GL_POSITION,
+        moon_position);
+
+    // --------------------------------------------------------
+    // AGUA
+    // --------------------------------------------------------
+
     glPushAttrib(
         GL_ENABLE_BIT |
         GL_TEXTURE_BIT |
@@ -476,21 +614,33 @@ void draw(GLFWwindow *window)
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
+
     glDisable(GL_BLEND);
     glDisable(GL_ALPHA_TEST);
 
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, water_texture_id);
+
+    glBindTexture(
+        GL_TEXTURE_2D,
+        water_texture_id);
 
     glTexEnvi(
         GL_TEXTURE_ENV,
         GL_TEXTURE_ENV_MODE,
         GL_MODULATE);
 
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+    glColor4f(
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f);
 
-    // Normal apontada para cima: permite que a luz ilumine a superficie da agua.
-    glNormal3f(0.0f, 1.0f, 0.0f);
+    // Normal apontada para cima.
+    glNormal3f(
+        0.0f,
+        1.0f,
+        0.0f);
+
     glBegin(GL_QUADS);
 
     glTexCoord2f(0.0f, 0.0f);
@@ -509,24 +659,47 @@ void draw(GLFWwindow *window)
 
     glPopAttrib();
 
-    // Barco: dobro do tamanho original.
+    // --------------------------------------------------------
+    // BARCO
+    // --------------------------------------------------------
+
     glPushAttrib(
         GL_ENABLE_BIT |
         GL_TEXTURE_BIT |
         GL_CURRENT_BIT);
 
     glEnable(GL_DEPTH_TEST);
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    glColor4f(
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f);
 
     glPushMatrix();
 
     // Eleva o barco para compensar o aumento de tamanho.
-    glTranslatef(0.0f, 2.0f, 0.0f);
+    glTranslatef(
+        0.0f,
+        2.0f,
+        0.0f);
 
-    glRotatef(-30.0f, 0.0f, 1.0f, 0.0f);
-    glRotatef(-3.0f, 0.0f, 0.0f, 1.0f);
+    glRotatef(
+        -30.0f,
+        0.0f,
+        1.0f,
+        0.0f);
 
-    glScalef(2.0f, 2.0f, 2.0f);
+    glRotatef(
+        -3.0f,
+        0.0f,
+        0.0f,
+        1.0f);
+
+    glScalef(
+        2.0f,
+        2.0f,
+        2.0f);
 
     glCallList(boat_model_display_list_id);
 
@@ -534,18 +707,29 @@ void draw(GLFWwindow *window)
 
     glPopAttrib();
 
-    // Porto: perto do barco.
+    // --------------------------------------------------------
+    // PORTO
+    // --------------------------------------------------------
+
     glPushAttrib(
         GL_ENABLE_BIT |
         GL_TEXTURE_BIT |
         GL_CURRENT_BIT);
 
     glEnable(GL_DEPTH_TEST);
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    glColor4f(
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f);
 
     glPushMatrix();
 
-    glTranslatef(kPortX, kPortY, kPortZ);
+    glTranslatef(
+        kPortX,
+        kPortY,
+        kPortZ);
 
     glScalef(
         kPortScale,
@@ -558,7 +742,10 @@ void draw(GLFWwindow *window)
 
     glPopAttrib();
 
-    // Lua 3D: modelo moon_small.glb posicionado no ceu.
+    // --------------------------------------------------------
+    // LUA 3D
+    // --------------------------------------------------------
+
     glPushAttrib(
         GL_ENABLE_BIT |
         GL_TEXTURE_BIT |
@@ -566,20 +753,43 @@ void draw(GLFWwindow *window)
         GL_LIGHTING_BIT);
 
     glEnable(GL_DEPTH_TEST);
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+
+    glColor4f(
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f);
 
     glPushMatrix();
-    glMaterialfv(GL_FRONT_AND_BACK, GL_EMISSION, kMoonEmission);
+
+    // Emissao faz a Lua parecer luminosa.
+    // Ela nao ilumina os outros objetos automaticamente.
+    glMaterialfv(
+        GL_FRONT_AND_BACK,
+        GL_EMISSION,
+        kMoonEmission);
+
+    // A Lua usa a mesma posicao calculada para a fonte luminosa.
     glTranslatef(
         moon_position[0],
         moon_position[1],
         moon_position[2]);
-    glScalef(kMoonScale, kMoonScale, kMoonScale);
+
+    glScalef(
+        kMoonScale,
+        kMoonScale,
+        kMoonScale);
+
     glCallList(moon_model_display_list_id);
+
     glPopMatrix();
 
     glPopAttrib();
 }
+
+// ============================================================
+// MAIN
+// ============================================================
 
 int main()
 {
@@ -606,10 +816,15 @@ int main()
             << std::endl;
 
         glfwTerminate();
+
         return EXIT_FAILURE;
     }
 
-    glfwSetWindowPos(window, 0, 0);
+    glfwSetWindowPos(
+        window,
+        0,
+        0);
+
     glfwMakeContextCurrent(window);
 
     glfwSetInputMode(
@@ -617,7 +832,9 @@ int main()
         GLFW_CURSOR,
         GLFW_CURSOR_DISABLED);
 
-    glfwSetCursorPosCallback(window, mouse_read);
+    glfwSetCursorPosCallback(
+        window,
+        mouse_read);
 
     glewExperimental = GL_TRUE;
 
@@ -635,18 +852,29 @@ int main()
 
     glGetError();
 
+    // --------------------------------------------------------
+    // CARREGAR TEXTURA DA AGUA
+    // --------------------------------------------------------
+
     load_water_texture(
         water_texture_id,
         "textures/water.jpg");
 
-    // Carrega o barco.
-    if (!load_model(boat_model, "models/barco.glb"))
+    // --------------------------------------------------------
+    // CARREGAR BARCO
+    // --------------------------------------------------------
+
+    if (!load_model(
+            boat_model,
+            "models/barco.glb"))
     {
         std::cerr
             << "Erro ao carregar models/barco.glb"
             << std::endl;
 
-        glDeleteTextures(1, &water_texture_id);
+        glDeleteTextures(
+            1,
+            &water_texture_id);
 
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -658,18 +886,27 @@ int main()
         boat_model_display_list_id,
         boat_model);
 
-    // Carrega o porto.
-    if (!load_model(port_model, "models/porto.glb"))
+    // --------------------------------------------------------
+    // CARREGAR PORTO
+    // --------------------------------------------------------
+
+    if (!load_model(
+            port_model,
+            "models/porto.glb"))
     {
         std::cerr
             << "Erro ao carregar models/porto.glb"
             << std::endl;
 
-        glDeleteLists(boat_model_display_list_id, 1);
+        glDeleteLists(
+            boat_model_display_list_id,
+            1);
 
         destroy_model(boat_model);
 
-        glDeleteTextures(1, &water_texture_id);
+        glDeleteTextures(
+            1,
+            &water_texture_id);
 
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -681,20 +918,32 @@ int main()
         port_model_display_list_id,
         port_model);
 
-    // Carrega a lua 3D.
-    if (!load_model(moon_model, "models/moon_small.glb"))
+    // --------------------------------------------------------
+    // CARREGAR LUA
+    // --------------------------------------------------------
+
+    if (!load_model(
+            moon_model,
+            "models/moon_small.glb"))
     {
         std::cerr
             << "Erro ao carregar models/moon_small.glb"
             << std::endl;
 
-        glDeleteLists(boat_model_display_list_id, 1);
-        glDeleteLists(port_model_display_list_id, 1);
+        glDeleteLists(
+            boat_model_display_list_id,
+            1);
+
+        glDeleteLists(
+            port_model_display_list_id,
+            1);
 
         destroy_model(boat_model);
         destroy_model(port_model);
 
-        glDeleteTextures(1, &water_texture_id);
+        glDeleteTextures(
+            1,
+            &water_texture_id);
 
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -706,28 +955,75 @@ int main()
         moon_model_display_list_id,
         moon_model);
 
+    // --------------------------------------------------------
+    // CONFIGURACAO DA ILUMINACAO
+    // --------------------------------------------------------
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    // Iluminacao da lua com as mesmas propriedades do codigo de referencia.
+    // Ativa a iluminacao e a fonte de luz.
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
 
-    // Luz ambiente baixa para manter a cena noturna sem clarear tudo.
-    const GLfloat kNightAmbient[] = {0.16f, 0.18f, 0.28f, 1.0f};
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, kNightAmbient);
+    // Iluminacao ambiente global da cena noturna.
+    const GLfloat kNightAmbient[] = {
+        0.16f, 0.18f, 0.28f, 1.0f
+    };
 
-    glLightfv(GL_LIGHT0, GL_AMBIENT, kMoonAmbient);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, kMoonDiffuse);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, kMoonSpecular);
-    glLightf(GL_LIGHT0, GL_CONSTANT_ATTENUATION, kMoonConstantAttenuation);
-    glLightf(GL_LIGHT0, GL_LINEAR_ATTENUATION, kMoonLinearAttenuation);
-    glLightf(GL_LIGHT0, GL_QUADRATIC_ATTENUATION, kMoonQuadraticAttenuation);
-    glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
+    glLightModelfv(
+        GL_LIGHT_MODEL_AMBIENT,
+        kNightAmbient);
 
+    // Propriedades da luz da Lua.
+    glLightfv(
+        GL_LIGHT0,
+        GL_AMBIENT,
+        kMoonAmbient);
+
+    glLightfv(
+        GL_LIGHT0,
+        GL_DIFFUSE,
+        kMoonDiffuse);
+
+    glLightfv(
+        GL_LIGHT0,
+        GL_SPECULAR,
+        kMoonSpecular);
+
+    // Atenuacao da luz conforme a distancia.
+    glLightf(
+        GL_LIGHT0,
+        GL_CONSTANT_ATTENUATION,
+        kMoonConstantAttenuation);
+
+    glLightf(
+        GL_LIGHT0,
+        GL_LINEAR_ATTENUATION,
+        kMoonLinearAttenuation);
+
+    glLightf(
+        GL_LIGHT0,
+        GL_QUADRATIC_ATTENUATION,
+        kMoonQuadraticAttenuation);
+
+    glLightModeli(
+        GL_LIGHT_MODEL_LOCAL_VIEWER,
+        GL_TRUE);
+
+    // Normaliza as normais dos modelos.
     glEnable(GL_NORMALIZE);
+
+    // Permite que a cor corrente influencie o material.
     glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+    glColorMaterial(
+        GL_FRONT_AND_BACK,
+        GL_AMBIENT_AND_DIFFUSE);
+
+    // --------------------------------------------------------
+    // LOOP PRINCIPAL
+    // --------------------------------------------------------
 
     while (!glfwWindowShouldClose(window))
     {
@@ -742,19 +1038,36 @@ int main()
             GL_DEPTH_BUFFER_BIT);
 
         keyboard_read(window);
+
         resize_window(window);
+
+        // A Lua e a luz sao atualizadas em draw().
         draw(window);
 
         glfwSwapBuffers(window);
+
         glfwPollEvents();
     }
 
-    // Libera os recursos.
-    glDeleteLists(boat_model_display_list_id, 1);
-    glDeleteLists(port_model_display_list_id, 1);
-    glDeleteLists(moon_model_display_list_id, 1);
+    // --------------------------------------------------------
+    // LIBERAR RECURSOS
+    // --------------------------------------------------------
 
-    glDeleteTextures(1, &water_texture_id);
+    glDeleteLists(
+        boat_model_display_list_id,
+        1);
+
+    glDeleteLists(
+        port_model_display_list_id,
+        1);
+
+    glDeleteLists(
+        moon_model_display_list_id,
+        1);
+
+    glDeleteTextures(
+        1,
+        &water_texture_id);
 
     destroy_model(boat_model);
     destroy_model(port_model);
