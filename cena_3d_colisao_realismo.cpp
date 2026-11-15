@@ -123,17 +123,17 @@ const GLfloat kMinimumMoonPositionY = 0.8f;
 
 // Posicao e escala da ilha.
 const GLfloat kIslandX = 4.0f;
-const GLfloat kIslandY = 0.0f;
+const GLfloat kIslandY = 0.2f;
 const GLfloat kIslandZ = 0.0f;
 const GLfloat kIslandScale = 2.0f;
 
 // Posicao do barco: afastado da ilha para permanecer sobre a agua.
-const GLfloat kBoatX = -18.0f;
-const GLfloat kBoatY = 2.0f;
-const GLfloat kBoatZ = 0.0f;
+const GLfloat kBoatX = 3.5f;
+const GLfloat kBoatY = 3.6f;
+const GLfloat kBoatZ = 17.0f;
 
 const GLfloat kSkyColorNight[] = {
-    0.015f, 0.025f, 0.09f, 1.0f};
+    0.005f, 0.008f, 0.025f, 1.0f};
 
 // ============================================================
 // ANIMACAO DO BARCO
@@ -270,7 +270,7 @@ const GLfloat kRainMaximumZ = 45.0f;
 const GLfloat kRainSpeed = 18.0f;
 
 // Comprimento dos riscos.
-const GLfloat kRainDropLength = 0.7f;
+const GLfloat kRainDropLength = 0.1f;
 
 // Cor azulada e transparencia das gotas.
 const GLfloat kRainColor[] = {
@@ -1044,9 +1044,9 @@ void draw(GLFWwindow *window)
         1.0f);
 
     glScalef(
-        2.0f,
-        2.0f,
-        2.0f);
+        5.0f,
+        4.0f,
+        4.0f);
 
     glCallList(boat_model_display_list_id);
 
@@ -1079,9 +1079,9 @@ void draw(GLFWwindow *window)
         kIslandZ);
 
     glScalef(
-        kIslandScale,
-        kIslandScale,
-        kIslandScale);
+    2.0f,
+    2.5f,
+    2.0f);
 
     glCallList(island_model_display_list_id);
 
