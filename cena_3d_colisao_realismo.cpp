@@ -109,10 +109,11 @@ const GLfloat kMoonQuadraticAttenuation = 0.0f;
 const GLfloat kMoonScale = 1.5f;
 
 GLfloat moon_position[] = {
-    0.0f,
-    1.5f,
-    -25.0f,
-    1.0f};
+    0.0f,   // X: posição horizontal
+    25.0f,  // Y: altura da Lua
+    -25.0f, // Z: profundidade
+    1.0f
+};
 
 const GLfloat kMoonTranslateIncrement = 0.4f;
 const GLfloat kMinimumMoonPositionY = 0.8f;
@@ -126,6 +127,8 @@ const GLfloat kIslandX = 4.0f;
 const GLfloat kIslandY = 0.2f;
 const GLfloat kIslandZ = 0.0f;
 const GLfloat kIslandScale = 2.0f;
+// Ajuste da posição inicial do personagem.
+const GLfloat kPlayerInitialOffsetZ = 7.5f;
 
 // Posicao do barco: afastado da ilha para permanecer sobre a agua.
 const GLfloat kBoatX = 3.5f;
@@ -220,15 +223,33 @@ void reset_camera_to_island()
         kIslandX + kIslandSpawnLocalX * kIslandScale;
 
     camera_eye_z =
-        kIslandZ + kIslandSpawnLocalZ * kIslandScale -
-        kPerspectiveTranslateZ;
+        kIslandZ +
+        kIslandSpawnLocalZ * kIslandScale -
+        kPerspectiveTranslateZ +
+        kPlayerInitialOffsetZ;
 
     camera_direction_x = kDefaultCameraDirectionX;
     camera_direction_y = kDefaultCameraDirectionY;
     camera_direction_z = kDefaultCameraDirectionZ;
 
     camera_yaw = kDefaultCameraYaw;
-    camera_pitch = kDefaultCameraPitch;
+
+    // Câmera começa olhando um pouco mais para cima.
+    camera_pitch = 15.0f;
+
+    const GLfloat radians = 3.14159265f / 180.0f;
+
+    const GLfloat pitch_radians = camera_pitch * radians;
+    const GLfloat yaw_radians = camera_yaw * radians;
+
+    camera_direction_x =
+        cosf(yaw_radians) * cosf(pitch_radians);
+
+    camera_direction_y =
+        sinf(pitch_radians);
+
+    camera_direction_z =
+        sinf(yaw_radians) * cosf(pitch_radians);
 
     camera_right_x = 1.0f;
     camera_right_y = 0.0f;
