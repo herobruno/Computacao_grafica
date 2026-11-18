@@ -112,8 +112,7 @@ GLfloat moon_position[] = {
     0.0f,   // X: posição horizontal
     25.0f,  // Y: altura da Lua
     -25.0f, // Z: profundidade
-    1.0f
-};
+    1.0f};
 
 const GLfloat kMoonTranslateIncrement = 0.4f;
 const GLfloat kMinimumMoonPositionY = 0.8f;
@@ -362,8 +361,8 @@ GLfloat random_rain_value(
     GLfloat maximum)
 {
     return minimum +
-        (static_cast<GLfloat>(rand()) / RAND_MAX) *
-        (maximum - minimum);
+           (static_cast<GLfloat>(rand()) / RAND_MAX) *
+               (maximum - minimum);
 }
 
 // ============================================================
@@ -783,10 +782,26 @@ void keyboard_read(GLFWwindow *window)
         GLfloat move_x = 0.0f;
         GLfloat move_z = 0.0f;
 
-        if (key_w) { move_x += forward_x; move_z += forward_z; }
-        if (key_s) { move_x -= forward_x; move_z -= forward_z; }
-        if (key_a) { move_x += camera_right_x; move_z += camera_right_z; }
-        if (key_d) { move_x -= camera_right_x; move_z -= camera_right_z; }
+        if (key_w)
+        {
+            move_x += forward_x;
+            move_z += forward_z;
+        }
+        if (key_s)
+        {
+            move_x -= forward_x;
+            move_z -= forward_z;
+        }
+        if (key_a)
+        {
+            move_x += camera_right_x;
+            move_z += camera_right_z;
+        }
+        if (key_d)
+        {
+            move_x -= camera_right_x;
+            move_z -= camera_right_z;
+        }
 
         const GLfloat move_length =
             sqrtf(move_x * move_x + move_z * move_z);
@@ -1100,9 +1115,9 @@ void draw(GLFWwindow *window)
         kIslandZ);
 
     glScalef(
-    2.0f,
-    2.5f,
-    2.0f);
+        2.0f,
+        2.5f,
+        2.0f);
 
     glCallList(island_model_display_list_id);
 
@@ -1173,11 +1188,14 @@ int main()
         return EXIT_FAILURE;
     }
 
+    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+
     GLFWwindow *window = glfwCreateWindow(
-        800,
-        800,
+        mode->width,
+        mode->height,
         "Cena 3D",
-        nullptr,
+        monitor,
         nullptr);
 
     if (!window)
